@@ -19,7 +19,7 @@
    ["]" (token 'CLOSEBRACKET lexeme)]
    [":" (token 'COLON lexeme)]
    [op (token lexeme lexeme)]
-   [reg (token 'REG (string->symbol lexeme))]
+   [reg (token 'REG (string->number (substring lexeme 1)))]
    [(:seq alphabetic (:* (:or alphabetic numeric "_")))
     (token 'ID (string->symbol lexeme))]
    [int (token 'INT (string->number lexeme))]))

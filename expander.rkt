@@ -33,25 +33,49 @@
     #'(#%module-begin
        (define label-table (apply hasheqv (build-label-list LINE ...)))
        (define line-func-list (build-lambda-list LINE ...))
-       (display line-func-list)
-       (display label-table)))
-       ;(void (run line-func-list label-table))))
+       (void (run line-func-list label-table))))
 
 (provide (rename-out [risq-module-begin #%module-begin]))
 
-(define (run line-func-list label-table) (list 1 2 3))
-;(define (run line-func-list label-table)
-;  (define line-func-vec (list->vector line-func-list))
-;  (for/fold ([line-idx 0])
-;            ([i (in-naturals)]
-;             #:break (>= line-idx (vector-length line-vec)))
-;    (define line-func (vector-ref line-func-list line-idx))
-;    (line-func)
-;    (add1 line-idx)))
-;
+(provide run)
+(define (run line-func-list label-table)
+  (define line-func-vec (list->vector line-func-list))
+  (for/fold ([line-idx 0] [mem (make-vector 4 0)] [regs (make-vector 16 0)]
+                          #:result (void))
+            ([i (in-naturals)]
+             #:break (>= line-idx (vector-length line-func-vec)))
+    (define line-func (vector-ref line-func-vec line-idx))
+    (apply values (add1 line-idx) (line-func mem regs))))
+
 
 (provide risq-nop)
-(define-macro (risq-nop) #'(lambda () (void)))
+(define-macro (risq-nop) #'(lambda (mem regs) (list mem regs)))
 
 (provide risq-add)
-(define-macro (risq-add DST SRC) #'(lambda () (void)))
+(define-macro (risq-add (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (+
+                   (read-reg mem regs DST-REG-ID)
+                   ((operand-reader SRC) mem regs)))))
+
+(provide risq-output)
+(define-macro (risq-output (risq-reg SRC-REG-ID))
+  #'(lambda (mem regs)
+      (displayln (read-reg mem regs SRC-REG-ID))
+      (list mem regs)))
+
+(provide operand-reader)
+(define-macro (operand-reader OPERAND)
+  (pattern-case #'OPERAND
+                [(risq-int INTVAL) #'(lambda (mem regs) INTVAL)]
+                [(risq-reg REGID) #'(lambda (mem regs) (read-reg reg REGID))]))
+
+(provide read-reg)
+(define (read-reg mem regs reg-id) (vector-ref regs reg-id))
+
+(provide update-reg)
+(define (update-reg mem regs reg-id new-value)
+  (let ([new-regs (vector-copy regs)])
+    (vector-set! new-regs reg-id new-value)
+    (list mem new-regs)))
