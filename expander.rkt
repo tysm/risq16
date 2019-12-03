@@ -59,6 +59,72 @@
                    (read-reg mem regs DST-REG-ID)
                    ((operand-reader SRC) mem regs)))))
 
+(provide risq-sub)
+(define-macro (risq-sub (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (-
+                   (read-reg mem regs DST-REG-ID)
+                   ((operand-reader SRC) mem regs)))))
+
+(provide risq-div)
+(define-macro (risq-div (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (floor
+                   (/
+                    (read-reg mem regs DST-REG-ID)
+                    ((operand-reader SRC) mem regs))))))
+
+(provide risq-mul)
+(define-macro (risq-mul (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (floor
+                   (*
+                    (read-reg mem regs DST-REG-ID)
+                    ((operand-reader SRC) mem regs))))))
+
+(provide risq-and)
+(define-macro (risq-and (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (bitwise-and
+                   (read-reg mem regs DST-REG-ID)
+                   ((operand-reader SRC) mem regs)))))
+
+(provide risq-or)
+(define-macro (risq-or (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (bitwise-or
+                   (read-reg mem regs DST-REG-ID)
+                   ((operand-reader SRC) mem regs)))))
+
+(provide risq-xor)
+(define-macro (risq-xor (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (bitwise-xor
+                   (read-reg mem regs DST-REG-ID)
+                   ((operand-reader SRC) mem regs)))))
+
+(provide risq-shl)
+(define-macro (risq-shl (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (arithmetic-shift
+                   (read-reg mem regs DST-REG-ID)
+                   ((operand-reader SRC) mem regs)))))
+
+(provide risq-shr)
+(define-macro (risq-shr (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (arithmetic-shift
+                   (read-reg mem regs DST-REG-ID)
+                   (- ((operand-reader SRC) mem regs))))))
+
 (provide risq-output)
 (define-macro (risq-output (risq-reg SRC-REG-ID))
   #'(lambda (mem regs)
@@ -69,7 +135,7 @@
 (define-macro (operand-reader OPERAND)
   (pattern-case #'OPERAND
                 [(risq-int INTVAL) #'(lambda (mem regs) INTVAL)]
-                [(risq-reg REGID) #'(lambda (mem regs) (read-reg reg REGID))]))
+                [(risq-reg REGID) #'(lambda (mem regs) (read-reg mem regs REGID))]))
 
 (provide read-reg)
 (define (read-reg mem regs reg-id) (vector-ref regs reg-id))
@@ -77,5 +143,5 @@
 (provide update-reg)
 (define (update-reg mem regs reg-id new-value)
   (let ([new-regs (vector-copy regs)])
-    (vector-set! new-regs reg-id new-value)
+    (vector-set! new-regs reg-id (bitwise-and new-value 65535))
     (list mem new-regs)))
