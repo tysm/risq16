@@ -12,7 +12,7 @@ risq-label-def : ID /COLON
                 | risq-shr | risq-set | risq-seq | risq-sne | risq-sgt
                 | risq-slt | risq-sge | risq-sle | risq-brz
                 | risq-bnz | risq-b | risq-br | risq-c | risq-cr
-                | risq-lw | risq-sw | risq-input | risq-output
+                | risq-lw | risq-sw | risq-input | risq-output | risq-outputu
 
 risq-nop        : /"nop"
 risq-add        : /"add" risq-reg risq-operand
@@ -48,6 +48,7 @@ risq-sw         : /"sw" risq-reg /OPENBRACKET risq-operand /CLOSEBRACKET
 
 risq-input      : /"input" risq-reg
 risq-output     : /"output" risq-reg
+risq-outputu    : /"outputu" risq-reg
 
 risq-reg        : REG
 risq-int        : INT

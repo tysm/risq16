@@ -99,6 +99,14 @@
                    (read-reg mem regs DST-REG-ID)
                    ((operand-reader SRC) mem regs)))))
 
+(provide risq-addu)
+(define-macro (risq-addu (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (+
+                   (integer->uint16 (read-reg mem regs DST-REG-ID))
+                   (integer->uint16 ((operand-reader SRC) mem regs))))))
+
 (provide risq-sub)
 (define-macro (risq-sub (risq-reg DST-REG-ID) SRC)
   #'(lambda (mem regs)
@@ -106,6 +114,14 @@
                   (-
                    (read-reg mem regs DST-REG-ID)
                    ((operand-reader SRC) mem regs)))))
+
+(provide risq-subu)
+(define-macro (risq-subu (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (-
+                   (integer->uint16 (read-reg mem regs DST-REG-ID))
+                   (integer->uint16 ((operand-reader SRC) mem regs))))))
 
 (provide risq-div)
 (define-macro (risq-div (risq-reg DST-REG-ID) SRC)
@@ -116,14 +132,30 @@
                     (read-reg mem regs DST-REG-ID)
                     ((operand-reader SRC) mem regs))))))
 
+(provide risq-divu)
+(define-macro (risq-divu (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (floor
+                   (/
+                    (integer->uint16 (read-reg mem regs DST-REG-ID))
+                    (integer->uint16 ((operand-reader SRC) mem regs)))))))
+
 (provide risq-mul)
 (define-macro (risq-mul (risq-reg DST-REG-ID) SRC)
   #'(lambda (mem regs)
       (update-reg mem regs DST-REG-ID
-                  (floor
-                   (*
-                    (read-reg mem regs DST-REG-ID)
-                    ((operand-reader SRC) mem regs))))))
+                  (*
+                   (read-reg mem regs DST-REG-ID)
+                   ((operand-reader SRC) mem regs)))))
+
+(provide risq-mulu)
+(define-macro (risq-mulu (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (*
+                   (integer->uint16 (read-reg mem regs DST-REG-ID))
+                   (integer->uint16 ((operand-reader SRC) mem regs))))))
 
 (provide risq-and)
 (define-macro (risq-and (risq-reg DST-REG-ID) SRC)
@@ -290,6 +322,12 @@
       (displayln (read-reg mem regs SRC-REG-ID))
       (list mem regs)))
 
+(provide risq-outputu)
+(define-macro (risq-outputu (risq-reg SRC-REG-ID))
+  #'(lambda (mem regs)
+      (displayln (integer->uint16 (read-reg mem regs SRC-REG-ID)))
+      (list mem regs)))
+
 
 (provide operand-reader)
 (define-macro (operand-reader OPERAND)
@@ -298,27 +336,27 @@
                 [(risq-reg REGID) #'(lambda (mem regs) (read-reg mem regs REGID))]))
 
 
-(define (integer->int16 int)
+(define (integer->uint16 int)
   (bitwise-and int (string->number "1111111111111111" 2)))
 
-(define (int16->integer int16)
-  (if (zero? (bitwise-and int16 (string->number "1000000000000000" 2)))
-      int16
-      (bitwise-ior (arithmetic-shift -1 16) int16)))
+(define (uint16->integer uint16)
+  (if (zero? (bitwise-and uint16 (string->number "1000000000000000" 2)))
+      uint16
+      (bitwise-ior (arithmetic-shift -1 16) uint16)))
 
 
 (provide read-reg)
-(define (read-reg mem regs reg-id) (int16->integer (vector-ref regs reg-id)))
+(define (read-reg mem regs reg-id) (uint16->integer (vector-ref regs reg-id)))
 
 (provide update-reg)
 (define (update-reg mem regs reg-id new-value)
   (let ([new-regs (vector-copy regs)])
-    (vector-set! new-regs reg-id (integer->int16 new-value))
+    (vector-set! new-regs reg-id (integer->uint16 new-value))
     (list mem new-regs)))
 
 (provide read-mem)
 (define (read-mem mem regs id)
-  (int16->integer
+  (uint16->integer
    (bitwise-ior
     (arithmetic-shift (vector-ref mem id) 8)
     (vector-ref mem (+ id 1)))))
@@ -326,7 +364,7 @@
 (provide update-mem)
 (define (update-mem mem regs id new-value)
   (let ([new-mem (vector-copy mem)]
-        [new-value (integer->int16 new-value)])
+        [new-value (integer->uint16 new-value)])
     (vector-set! new-mem id (arithmetic-shift new-value -8))
     (vector-set! new-mem (+ id 1) (bitwise-and new-value (string->number "11111111" 2)))
     (list new-mem regs)))

@@ -7,7 +7,7 @@
                            "xor" "shl" "shr" "set" "seq" "sne"
                            "sgt" "slt" "sge" "sle" "brz"
                            "b" "br" "c" "cr"
-                           "bnz" "lw" "sw" "input" "output"))
+                           "bnz" "lw" "sw" "input" "output" "outputu"))
 
 (define-lex-abbrev reg (:or (:seq "r" (char-set "0123456789")) (:seq "r1" (char-set "012345")) (:seq (char-set "sf") "p")))
 (define-lex-abbrev int (:seq (:? "-") (:+ (char-set "0123456789"))))
