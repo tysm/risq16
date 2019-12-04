@@ -137,7 +137,7 @@
 (define-macro (risq-or (risq-reg DST-REG-ID) SRC)
   #'(lambda (mem regs)
       (update-reg mem regs DST-REG-ID
-                  (bitwise-or
+                  (bitwise-ior
                    (read-reg mem regs DST-REG-ID)
                    ((operand-reader SRC) mem regs)))))
 
@@ -164,6 +164,7 @@
                   (arithmetic-shift
                    (read-reg mem regs DST-REG-ID)
                    (- ((operand-reader SRC) mem regs))))))
+
 
 (provide risq-set)
 (define-macro (risq-set (risq-reg DST-REG-ID) SRC)
@@ -197,22 +198,21 @@
                     (read-reg mem regs DST-REG-ID)
                     ((operand-reader SRC) mem regs))))))
 
-(provide risq-sge)
-(define-macro (risq-sge (risq-reg DST-REG-ID) SRC)
-  #'(lambda (mem regs)
-      (update-reg mem regs DST-REG-ID
-                  (boolean->integer
-                   (>=
-                    (read-reg mem regs DST-REG-ID)
-                    ((operand-reader SRC) mem regs))))))
-
-
 (provide risq-slt)
 (define-macro (risq-slt (risq-reg DST-REG-ID) SRC)
   #'(lambda (mem regs)
       (update-reg mem regs DST-REG-ID
                   (boolean->integer
                    (<
+                    (read-reg mem regs DST-REG-ID)
+                    ((operand-reader SRC) mem regs))))))
+
+(provide risq-sge)
+(define-macro (risq-sge (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (boolean->integer
+                   (>=
                     (read-reg mem regs DST-REG-ID)
                     ((operand-reader SRC) mem regs))))))
 
@@ -224,41 +224,6 @@
                    (<=
                     (read-reg mem regs DST-REG-ID)
                     ((operand-reader SRC) mem regs))))))
-
-(provide risq-input)
-(define-macro (risq-input (risq-reg DST-REG-ID))
-  #'(lambda (mem regs)
-      (define input-value (read))
-      (update-reg mem regs DST-REG-ID
-                  (if (integer? input-value) input-value 0))))
-
-(provide risq-output)
-(define-macro (risq-output (risq-reg SRC-REG-ID))
-  #'(lambda (mem regs)
-      (displayln (read-reg mem regs SRC-REG-ID))
-      (list mem regs)))
-
-(provide risq-b)
-(define-macro (risq-b (risq-label LABELNAME))
-  #'(lambda (mem regs)
-      (define label-name (symbol->string (quote LABELNAME)))
-      (raise (branch-labelname-signal label-name))))
-
-(provide risq-br)
-(define-macro (risq-br (risq-reg REG-ID))
-  #'(lambda (mem regs)
-      (raise (branch-index-signal (read-reg mem regs REG-ID)))))
-
-(provide risq-c)
-(define-macro (risq-c (risq-label LABELNAME))
-  #'(lambda (mem regs)
-      (define label-name (symbol->string (quote LABELNAME)))
-      (raise (call-labelname-signal label-name))))
-      
-(provide risq-cr)
-(define-macro (risq-cr (risq-label LABELNAME))
-  #'(lambda (mem regs)
-      (raise (call-index-signal (read-reg mem regs REG-ID)))))  
 
 (provide risq-brz)
 (define-macro (risq-brz (risq-reg REG-ID) (risq-label LABELNAME))
@@ -276,6 +241,55 @@
           (raise (branch-labelname-signal label-name))
           (list mem regs))))
 
+(provide risq-b)
+(define-macro (risq-b (risq-label LABELNAME))
+  #'(lambda (mem regs)
+      (define label-name (symbol->string (quote LABELNAME)))
+      (raise (branch-labelname-signal label-name))))
+
+(provide risq-c)
+(define-macro (risq-c (risq-label LABELNAME))
+  #'(lambda (mem regs)
+      (define label-name (symbol->string (quote LABELNAME)))
+      (raise (call-labelname-signal label-name))))
+
+(provide risq-br)
+(define-macro (risq-br (risq-reg REG-ID))
+  #'(lambda (mem regs)
+      (raise (branch-index-signal (read-reg mem regs REG-ID)))))
+
+(provide risq-cr)
+(define-macro (risq-cr (risq-label LABELNAME))
+  #'(lambda (mem regs)
+      (raise (call-index-signal (read-reg mem regs REG-ID)))))  
+
+
+(provide risq-lw)
+(define-macro (risq-lw (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-reg mem regs DST-REG-ID
+                  (read-mem mem regs ((operand-reader SRC) mem regs)))))
+
+(provide risq-sw)
+(define-macro (risq-sw (risq-reg DST-REG-ID) SRC)
+  #'(lambda (mem regs)
+      (update-mem mem regs ((operand-reader SRC) mem regs)
+                  (read-reg mem regs DST-REG-ID))))
+
+
+(provide risq-input)
+(define-macro (risq-input (risq-reg DST-REG-ID))
+  #'(lambda (mem regs)
+      (define input-value (read))
+      (update-reg mem regs DST-REG-ID
+                  (if (integer? input-value) input-value 0))))
+
+(provide risq-output)
+(define-macro (risq-output (risq-reg SRC-REG-ID))
+  #'(lambda (mem regs)
+      (displayln (read-reg mem regs SRC-REG-ID))
+      (list mem regs)))
+
 
 (provide operand-reader)
 (define-macro (operand-reader OPERAND)
@@ -283,14 +297,39 @@
                 [(risq-int INTVAL) #'(lambda (mem regs) INTVAL)]
                 [(risq-reg REGID) #'(lambda (mem regs) (read-reg mem regs REGID))]))
 
+
+(define (integer->int16 int)
+  (bitwise-and int (string->number "1111111111111111" 2)))
+
+(define (int16->integer int16)
+  (if (zero? (bitwise-and int16 (string->number "1000000000000000" 2)))
+      int16
+      (bitwise-ior (arithmetic-shift -1 16) int16)))
+
+
 (provide read-reg)
-(define (read-reg mem regs reg-id) (vector-ref regs reg-id))
+(define (read-reg mem regs reg-id) (int16->integer (vector-ref regs reg-id)))
 
 (provide update-reg)
 (define (update-reg mem regs reg-id new-value)
   (let ([new-regs (vector-copy regs)])
-    (vector-set! new-regs reg-id (bitwise-and new-value 65535))
+    (vector-set! new-regs reg-id (integer->int16 new-value))
     (list mem new-regs)))
+
+(provide read-mem)
+(define (read-mem mem regs id)
+  (int16->integer
+   (bitwise-ior
+    (arithmetic-shift (vector-ref mem id) 8)
+    (vector-ref mem (+ id 1)))))
+
+(provide update-mem)
+(define (update-mem mem regs id new-value)
+  (let ([new-mem (vector-copy mem)]
+        [new-value (integer->int16 new-value)])
+    (vector-set! new-mem id (arithmetic-shift new-value -8))
+    (vector-set! new-mem (+ id 1) (bitwise-and new-value (string->number "11111111" 2)))
+    (list new-mem regs)))
 
 (provide store-into-stack)
 (define (store-into-stack mem regs value) (list mem regs)) ; TODO r15 <- r15 - 2; [r15] <- value
