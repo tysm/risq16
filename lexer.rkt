@@ -4,8 +4,9 @@
 
 (define-lex-abbrev op (:or "nop" "add" "addu" "sub" "subu" "div"
                            "divu" "mul" "mulu" "and" "or"
-                           "xor" "shl" "shr" "seq" "sne"
-                           "sgt" "slt" "sge" "sle" "brz" "b"
+                           "xor" "shl" "shr" "set" "seq" "sne"
+                           "sgt" "slt" "sge" "sle" "brz"
+                           "b" "br" "c" "cr"
                            "bnz" "lw" "sw" "input" "output"))
 
 (define-lex-abbrev reg (:or (:seq "r" (char-set "0123456789")) (:seq "r1" (char-set "012345")) (:seq (char-set "sf") "p")))
@@ -15,6 +16,7 @@
   (lexer-srcloc
    ["\n" (token 'NEWLINE lexeme)]
    [whitespace (token lexeme #:skip? #t)]
+   [(from/to ";" "\n") (token lexeme #:skip? #t)]
    ["[" (token 'OPENBRACKET lexeme)]
    ["]" (token 'CLOSEBRACKET lexeme)]
    [":" (token 'COLON lexeme)]
