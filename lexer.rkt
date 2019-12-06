@@ -9,7 +9,7 @@
                            "b" "br" "c" "cr"
                            "bnz" "lw" "sw" "input" "output" "outputu"))
 
-(define-lex-abbrev reg (:or (:seq "r" (char-set "0123456789")) (:seq "r1" (char-set "012345")) (:seq (char-set "sf") "p")))
+(define-lex-abbrev reg (:or (:seq "r" (char-set "0123456789")) (:seq "r1" (char-set "012345")) "sp"))
 (define-lex-abbrev int (:seq (:? "-") (:+ (char-set "0123456789"))))
 
 (define risq16-lexer
@@ -21,9 +21,12 @@
    ["]" (token 'CLOSEBRACKET lexeme)]
    [":" (token 'COLON lexeme)]
    [op (token lexeme lexeme)]
-   [reg (token 'REG (string->number (substring lexeme 1)))]
+   [reg (token 'REG (if (equal? "sp" lexeme) 15
+                        (string->number (substring lexeme 1))))]
    [(:seq alphabetic (:* (:or alphabetic numeric "_")))
     (token 'ID (string->symbol lexeme))]
-   [int (token 'INT (string->number lexeme))]))
+   [int (let ([value (string->number lexeme)])
+          (if (and (>= value -32768) (<= value 65535)) (token 'INT value)
+              (error (format "error in line ~a: int ~a does not fit in 16 bits" "TODO line-idx" value))))]))
 
 (provide risq16-lexer)

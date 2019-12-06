@@ -58,7 +58,7 @@
 (define (run line-func-list label-table)
   (define line-func-vec (list->vector line-func-list))
   (for/fold ([line-idx 0]
-             [mem (make-vector 65535 0)]
+             [mem (make-vector 65536 0)]
              [regs (vector 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 65535)]
              #:result (void))
             ([i (in-naturals)]
@@ -78,12 +78,12 @@
          [call-labelname-signal? (lambda (signal)
                            (define label-name (call-labelname-signal-val signal))
                            (if (hash-has-key? label-table label-name)
-                               (apply values (hash-ref label-table label-name) (store-into-stack mem regs line-idx))
+                               (apply values (hash-ref label-table label-name) (store-into-stack mem regs (add1 line-idx)))
                                (error (format "error in line ~a: label ~a not found" (add1 line-idx) label-name))))]
          [call-index-signal? (lambda (signal)
                                (define new-line-idx (call-index-signal-val signal))
                                (if (< new-line-idx (vector-length line-func-vec))
-                                   (apply values new-line-idx (store-into-stack mem regs line-idx))
+                                   (apply values new-line-idx (store-into-stack mem regs (add1 line-idx)))
                                    (error (format "error in line ~a: line ~a not found" (add1 line-idx) new-line-idx))))])
         (apply values (add1 line-idx) (line-func mem regs)))))
 
@@ -291,7 +291,7 @@
       (raise (branch-index-signal (read-reg mem regs REG-ID)))))
 
 (provide risq-cr)
-(define-macro (risq-cr (risq-label LABELNAME))
+(define-macro (risq-cr (risq-reg REG-ID))
   #'(lambda (mem regs)
       (raise (call-index-signal (read-reg mem regs REG-ID)))))  
 
@@ -300,12 +300,14 @@
 (define-macro (risq-lw (risq-reg DST-REG-ID) SRC)
   #'(lambda (mem regs)
       (update-reg mem regs DST-REG-ID
-                  (read-mem mem regs ((operand-reader SRC) mem regs)))))
+                  (read-mem mem regs
+                            (integer->uint16 ((operand-reader SRC) mem regs))))))
 
 (provide risq-sw)
 (define-macro (risq-sw (risq-reg DST-REG-ID) SRC)
   #'(lambda (mem regs)
-      (update-mem mem regs ((operand-reader SRC) mem regs)
+      (update-mem mem regs
+                  (integer->uint16 ((operand-reader SRC) mem regs))
                   (read-reg mem regs DST-REG-ID))))
 
 
@@ -359,15 +361,17 @@
   (uint16->integer
    (bitwise-ior
     (arithmetic-shift (vector-ref mem id) 8)
-    (vector-ref mem (+ id 1)))))
+    (vector-ref mem (add1 id)))))
 
 (provide update-mem)
 (define (update-mem mem regs id new-value)
   (let ([new-mem (vector-copy mem)]
         [new-value (integer->uint16 new-value)])
     (vector-set! new-mem id (arithmetic-shift new-value -8))
-    (vector-set! new-mem (+ id 1) (bitwise-and new-value (string->number "11111111" 2)))
+    (vector-set! new-mem (add1 id) (bitwise-and new-value (string->number "11111111" 2)))
     (list new-mem regs)))
 
 (provide store-into-stack)
-(define (store-into-stack mem regs value) (list mem regs)) ; TODO r15 <- r15 - 2; [r15] <- value
+(define (store-into-stack mem regs value)
+  (let ([new-regs (car (update-reg mem regs 15 (- (read-reg mem regs 15) 2)))])
+    (update-mem mem new-regs (integer->uint16 (read-reg mem new-regs 15)) value)))
