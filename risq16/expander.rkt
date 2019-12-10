@@ -59,7 +59,7 @@
   (define line-func-vec (list->vector line-func-list))
   (for/fold ([line-idx 0]
              [mem (make-vector 65536 0)]
-             [regs (vector 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 65535)]
+             [regs (vector 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 65534)]
              #:result (void))
             ([i (in-naturals)]
              #:break (>= line-idx (vector-length line-func-vec)))
@@ -373,5 +373,5 @@
 
 (provide store-into-stack)
 (define (store-into-stack mem regs value)
-  (let ([new-regs (car (update-reg mem regs 15 (- (read-reg mem regs 15) 2)))])
+  (let ([new-regs (cadr (update-reg mem regs 15 (- (read-reg mem regs 15) 2)))])
     (update-mem mem new-regs (integer->uint16 (read-reg mem new-regs 15)) value)))

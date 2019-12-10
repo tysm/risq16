@@ -7,4 +7,4 @@
   (strip-bindings
    #`(module risq16-mod "expander.rkt" #,parse-tree)))
 
-(module+ reader (provide read-syntax))
+(provide read-syntax)
