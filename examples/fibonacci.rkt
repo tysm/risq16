@@ -14,16 +14,16 @@ fib:
   lw r1 [r14]
 
   cond0:
-    set r14 0
-    sub r14 r1
+    set r14 r1
+    sne r14 0
     bnz r14 cond1
 
     set r2 0
 
     b endcond
   cond1:
-    set r14 1
-    sub r14 r1
+    set r14 r1
+    sne r14 1
     bnz r14 else
 
     set r2 1
@@ -65,8 +65,8 @@ fib:
 main:
   input r1
   loop:
-    set r14 -1
-    sub r14 r1
+    set r14 r1
+    sne r14 -1
     brz r14 endloop
 
     subu sp 2
